@@ -36,4 +36,34 @@ describe("db schema", () => {
 
     expect(status).toBe("pending");
   });
+
+  it("exposes the links_with_tags view", () => {
+    const viewRow: Database["public"]["Views"]["links_with_tags"]["Row"] = {
+      id: "33333333-3333-4333-8333-333333333333",
+      user_id: "44444444-4444-4444-8444-444444444444",
+      url: "https://example.com",
+      title: "Example",
+      comment: null,
+      fav_icon_path: null,
+      metadata_source: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      tag_ids: [],
+      tag_names: [],
+      tag_colors: [],
+      search_vector: null,
+    };
+
+    expect(Array.isArray(viewRow.tag_ids)).toBe(true);
+  });
+
+  it("describes the search_links rpc payload", () => {
+    const args: Database["public"]["Functions"]["search_links"]["Args"] = {
+      p_search: "design",
+      p_page: 2,
+    };
+
+    expect(args.p_search).toBe("design");
+    expect(args.p_page).toBe(2);
+  });
 });

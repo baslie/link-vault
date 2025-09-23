@@ -302,3 +302,186 @@ comment on table public.imports is 'Import jobs and progress metadata';
 comment on table public.import_errors is 'Detailed import errors per job';
 comment on table public.audit_link_events is 'Audit trail for link operations';
 
+create or replace view public.links_with_tags as
+select
+  l.id,
+  l.user_id,
+  l.url,
+  l.title,
+  l.comment,
+  l.fav_icon_path,
+  l.metadata_source,
+  l.created_at,
+  l.updated_at,
+  coalesce(array_agg(t.id order by t.name) filter (where t.id is not null), '{}'::uuid[]) as tag_ids,
+  coalesce(array_agg(t.name order by t.name) filter (where t.id is not null), '{}'::text[]) as tag_names,
+  coalesce(array_agg(t.color order by t.name) filter (where t.id is not null), '{}'::text[]) as tag_colors,
+  (
+    setweight(to_tsvector('simple', coalesce(l.title, '')), 'A') ||
+    setweight(to_tsvector('simple', coalesce(l.comment, '')), 'B') ||
+    setweight(to_tsvector('simple', coalesce(l.url, '')), 'C') ||
+    setweight(
+      to_tsvector(
+        'simple',
+        coalesce(string_agg(t.name order by t.name, ' ') filter (where t.id is not null), '')
+      ),
+      'B'
+    )
+  ) as search_vector
+from public.links l
+left join public.link_tags lt on lt.link_id = l.id
+left join public.tags t on t.id = lt.tag_id
+group by l.id;
+
+comment on view public.links_with_tags is
+  'Aggregated representation of links with tag metadata and a search vector for filtering.';
+
+create or replace function public.search_links(
+  p_search text default null,
+  p_tag_ids uuid[] default null,
+  p_sort text default 'created_at',
+  p_order text default 'desc',
+  p_page integer default 1,
+  p_page_size integer default 20,
+  p_date_from timestamptz default null,
+  p_date_to timestamptz default null
+)
+returns jsonb
+language plpgsql
+stable
+set search_path = public
+as $$
+declare
+  normalized_sort text;
+  normalized_order text;
+  limit_value integer;
+  page_number integer;
+  offset_value integer;
+  search_term text;
+  filter_tag_ids uuid[];
+  payload jsonb;
+begin
+  normalized_sort := case when lower(coalesce(p_sort, '')) = 'title' then 'title' else 'created_at' end;
+  normalized_order := case when lower(coalesce(p_order, '')) = 'asc' then 'asc' else 'desc' end;
+  limit_value := greatest(1, least(500, coalesce(p_page_size, 20)));
+  page_number := greatest(1, coalesce(p_page, 1));
+  offset_value := (page_number - 1) * limit_value;
+  filter_tag_ids := coalesce(p_tag_ids, '{}');
+  search_term := nullif(trim(coalesce(p_search, '')), '');
+
+  with base as (
+    select
+      l.id,
+      l.user_id,
+      l.url,
+      l.title,
+      l.comment,
+      l.fav_icon_path,
+      l.metadata_source,
+      l.created_at,
+      l.updated_at,
+      l.tag_ids,
+      l.tag_names,
+      l.tag_colors,
+      l.search_vector
+    from public.links_with_tags l
+    where l.user_id = auth.uid()
+      and (p_date_from is null or l.created_at >= p_date_from)
+      and (p_date_to is null or l.created_at <= p_date_to)
+  ),
+  filtered as (
+    select *
+    from base
+    where (
+      coalesce(array_length(filter_tag_ids, 1), 0) = 0
+      or tag_ids @> filter_tag_ids
+    )
+      and (
+        search_term is null
+        or search_term = ''
+        or (
+          search_vector @@ plainto_tsquery('simple', search_term)
+          or url ilike '%' || search_term || '%'
+          or exists (
+            select 1 from unnest(tag_names) as tag_name
+            where tag_name ilike '%' || search_term || '%'
+          )
+        )
+      )
+  ),
+  total_count as (
+    select count(*)::bigint as value from filtered
+  ),
+  paginated as (
+    select
+      filtered.id,
+      filtered.user_id,
+      filtered.url,
+      filtered.title,
+      filtered.comment,
+      filtered.fav_icon_path,
+      filtered.metadata_source,
+      filtered.created_at,
+      filtered.updated_at,
+      filtered.tag_ids,
+      filtered.tag_names,
+      filtered.tag_colors
+    from filtered
+    order by
+      case when normalized_sort = 'title' and normalized_order = 'asc' then filtered.title end asc,
+      case when normalized_sort = 'title' and normalized_order = 'desc' then filtered.title end desc,
+      case when normalized_sort = 'created_at' and normalized_order = 'asc' then filtered.created_at end asc,
+      case when normalized_sort = 'created_at' and normalized_order = 'desc' then filtered.created_at end desc,
+      filtered.created_at desc,
+      filtered.id asc
+    limit limit_value
+    offset offset_value
+  ),
+  items_json as (
+    select coalesce(jsonb_agg(row_to_json(paginated)), '[]'::jsonb) as items from paginated
+  )
+  select jsonb_build_object(
+      'items', items_json.items,
+      'total', total_count.value,
+      'page', page_number,
+      'perPage', limit_value
+    )
+  into payload
+  from items_json, total_count;
+
+  if payload is null then
+    payload := jsonb_build_object(
+      'items', '[]'::jsonb,
+      'total', 0,
+      'page', page_number,
+      'perPage', limit_value
+    );
+  end if;
+
+  return payload;
+end;
+$$;
+
+comment on function public.search_links(
+  p_search text,
+  p_tag_ids uuid[],
+  p_sort text,
+  p_order text,
+  p_page integer,
+  p_page_size integer,
+  p_date_from timestamptz,
+  p_date_to timestamptz
+) is 'Return paginated links with aggregated tags applying search, filters and pagination for the authenticated user.';
+
+grant select on public.links_with_tags to authenticated;
+grant execute on function public.search_links(
+  p_search text,
+  p_tag_ids uuid[],
+  p_sort text,
+  p_order text,
+  p_page integer,
+  p_page_size integer,
+  p_date_from timestamptz,
+  p_date_to timestamptz
+) to authenticated;
+

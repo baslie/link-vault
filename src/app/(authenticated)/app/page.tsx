@@ -1,19 +1,22 @@
-export default function WorkspacePage() {
+import { LinksWorkspace } from "@/components/links/links-workspace";
+import { DEFAULT_LINKS_FILTERS, searchLinks } from "@/lib/links/query";
+import { getSupabaseServerComponentClient } from "@/lib/supabase/server";
+import { fetchTagsForUser } from "@/lib/tags/server";
+
+export default async function WorkspacePage() {
+  const supabase = getSupabaseServerComponentClient();
+  const initialFilters = { ...DEFAULT_LINKS_FILTERS };
+
+  const [initialLinks, initialTags] = await Promise.all([
+    searchLinks(supabase, initialFilters),
+    fetchTagsForUser(supabase),
+  ]);
+
   return (
-    <section className="space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Рабочее пространство</h1>
-        <p className="text-sm text-muted-foreground">
-          Здесь появятся таблица ссылок, фильтры и инструменты импорта. Аутентификация настроена, можно переходить к реализации
-          прикладных сценариев.
-        </p>
-      </div>
-      <div className="rounded-xl border border-dashed border-border bg-card/60 p-6">
-        <p className="text-sm text-muted-foreground">
-          Добавьте компоненты управления ссылками и тегами на следующих этапах дорожной карты. Текущий экран подтверждает, что
-          доступ ограничен авторизованными пользователями.
-        </p>
-      </div>
-    </section>
+    <LinksWorkspace
+      initialFilters={initialFilters}
+      initialLinks={initialLinks}
+      initialTags={initialTags}
+    />
   );
 }
