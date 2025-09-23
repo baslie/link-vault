@@ -6,6 +6,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
+      "next-themes": fileURLToPath(new URL("./src/test/stubs/next-themes.tsx", import.meta.url)),
     },
   },
   esbuild: {

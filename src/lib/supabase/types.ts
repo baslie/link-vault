@@ -255,10 +255,39 @@ export interface Database {
       };
     };
     Views: {
-      [_ in never]: never;
+      links_with_tags: {
+        Row: {
+          comment: string | null;
+          created_at: string;
+          fav_icon_path: string | null;
+          id: string;
+          metadata_source: Json | null;
+          search_vector: unknown;
+          tag_colors: string[];
+          tag_ids: string[];
+          tag_names: string[];
+          title: string;
+          updated_at: string;
+          url: string;
+          user_id: string;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
-      [_ in never]: never;
+      search_links: {
+        Args: {
+          p_search?: string | null;
+          p_tag_ids?: string[] | null;
+          p_sort?: string | null;
+          p_order?: string | null;
+          p_page?: number | null;
+          p_page_size?: number | null;
+          p_date_from?: string | null;
+          p_date_to?: string | null;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       import_status: "pending" | "completed" | "failed";
