@@ -24,6 +24,10 @@ Next.js 14 приложение для управления ссылками с 
 │   ├── app/                 # маршруты App Router и глобальные стили
 │   ├── components/          # UI-компоненты и провайдеры
 │   └── lib/                 # утилиты и вспомогательные функции
+├── supabase/
+│   ├── config.toml          # конфигурация Supabase CLI для локального запуска
+│   ├── migrations/          # SQL-миграции схемы данных и политик RLS
+│   └── seed.sql             # идемпотентные сид-данные для разработки
 └── docs/                    # исходные документы брифа и архитектуры
 ```
 
@@ -39,6 +43,13 @@ Next.js 14 приложение для управления ссылками с 
 - `pnpm test` — запуск тестов в headless-режиме (`vitest run`)
 - `pnpm test:watch` — запуск тестов в watch-режиме
 
+## Настройка Supabase
+
+- Скопируй `.env.example` в `.env.local` и заполни ключи проекта Supabase (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`).
+- Установи и авторизуй Supabase CLI (пакет `supabase` добавлен в `devDependencies`). Команды запускаются через `pnpm exec supabase …`.
+- Запусти локальную инфраструктуру: `pnpm exec supabase start`.
+- Проверь миграции: `pnpm exec supabase db push --dry-run`. Для полной перезагрузки с сид-данными используй `pnpm exec supabase db reset --seed` (прочитает `supabase/migrations` и `supabase/seed.sql`).
+
 ## Pre-commit хуки
 
 В репозитории настроен `husky` с `lint-staged`: перед коммитом автоматически выполняются ESLint, Prettier и `pnpm typecheck`.
@@ -47,5 +58,3 @@ Next.js 14 приложение для управления ссылками с 
 
 - [Бриф продукта](docs/brief.md)
 - [Архитектурная схема](docs/architecture.md)
-
-Следующий шаг по дорожной карте — интеграция Supabase, миграции и настройка клиентских SDK (см. задачу 1-2 в `AGENTS.md`).
