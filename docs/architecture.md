@@ -321,6 +321,7 @@
 - Создание bucket `favicons`.
 - Настройка RLS-политик.
 - Создание сервисного ключа для серверных операций (хранится как `SUPABASE_SERVICE_ROLE_KEY`).
+- Подробная инструкция по шагам: [`docs/supabase-setup.md`](./supabase-setup.md).
 
 ### 7.4 Переменные окружения (Vercel)
 
