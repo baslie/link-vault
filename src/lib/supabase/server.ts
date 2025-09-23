@@ -50,7 +50,7 @@ export function createSupabaseServerActionClient(cookieStore: CookieStore): Serv
       getAll() {
         return mapCookiesToArray(cookieStore);
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet: CookiePayload[]) {
         applyCookies(cookieStore, cookiesToSet);
       },
     },

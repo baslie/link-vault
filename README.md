@@ -49,6 +49,7 @@ Next.js 14 приложение для управления ссылками с 
 - Установи и авторизуй Supabase CLI (пакет `supabase` добавлен в `devDependencies`). Команды запускаются через `pnpm exec supabase …`.
 - Запусти локальную инфраструктуру: `pnpm exec supabase start`.
 - Проверь миграции: `pnpm exec supabase db push --dry-run`. Для полной перезагрузки с сид-данными используй `pnpm exec supabase db reset --seed` (прочитает `supabase/migrations` и `supabase/seed.sql`).
+- Детальная пошаговая инструкция размещена в [`docs/supabase-setup.md`](docs/supabase-setup.md).
 
 ## Pre-commit хуки
 
