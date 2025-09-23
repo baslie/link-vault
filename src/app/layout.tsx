@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 import { ReactQueryProvider } from "@/components/providers/react-query-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
@@ -29,7 +30,9 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
       <body
         className={`${inter.variable} ${robotoMono.variable} min-h-screen bg-background font-sans text-foreground antialiased`}
       >
-        <ReactQueryProvider>{children}</ReactQueryProvider>
+        <ThemeProvider>
+          <ReactQueryProvider>{children}</ReactQueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
