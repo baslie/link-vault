@@ -69,7 +69,7 @@ export function ProfileMenu({ profile, isAdmin = false }: ProfileMenuProps) {
               <p className="text-xs text-muted-foreground">{profile?.email ?? "Email не указан"}</p>
             </div>
             <Link
-              href="/app/settings"
+              href="/settings"
               className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground transition hover:bg-muted"
               onClick={() => setIsOpen(false)}
             >
@@ -87,7 +87,7 @@ export function ProfileMenu({ profile, isAdmin = false }: ProfileMenuProps) {
               </Link>
             ) : null}
             <Link
-              href="/app/import"
+              href="/import"
               className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground transition hover:bg-muted"
               onClick={() => setIsOpen(false)}
             >
@@ -95,7 +95,7 @@ export function ProfileMenu({ profile, isAdmin = false }: ProfileMenuProps) {
               Импорт CSV
             </Link>
             <Link
-              href="/app/export"
+              href="/export"
               className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground transition hover:bg-muted"
               onClick={() => setIsOpen(false)}
             >
