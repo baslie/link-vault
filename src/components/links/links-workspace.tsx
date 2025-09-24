@@ -1,11 +1,20 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { useLinksQuery } from "@/hooks/use-links-query";
 import { useTagsQuery } from "@/hooks/use-tags-query";
+import {
+  useCreateLinkMutation,
+  useDeleteLinkMutation,
+  useUpdateLinkMutation,
+} from "@/hooks/use-link-mutations";
+import { Button } from "@/components/ui/button";
+import { LinkForm } from "@/components/links/link-form";
+import { parseLinkMetadata, type LinkMetadata } from "@/lib/links/metadata";
 import type { LinkListQueryFilters, LinkListResult } from "@/lib/links/query";
 import type { TagSummary } from "@/lib/tags/types";
+import type { LinkFormValues } from "@/lib/links/schema";
 
 const LINK_PREVIEW_COUNT = 5;
 
@@ -41,9 +50,95 @@ export function LinksWorkspace({ initialFilters, initialLinks, initialTags }: Li
     staleTime: 5 * 60 * 1000,
   });
 
+  const createMutation = useCreateLinkMutation();
+  const updateMutation = useUpdateLinkMutation();
+  const deleteMutation = useDeleteLinkMutation();
+
+  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const linksData = linksQuery.data ?? initialLinks;
   const tagsData = tagsQuery.data ?? initialTags;
   const previewItems = linksData.items.slice(0, LINK_PREVIEW_COUNT);
+
+  const editingLink = useMemo(
+    () => linksData.items.find((link) => link.id === editingLinkId) ?? null,
+    [editingLinkId, linksData.items],
+  );
+
+  const editingInitialValues = useMemo<LinkFormValues | undefined>(() => {
+    if (!editingLink) {
+      return undefined;
+    }
+
+    return {
+      url: editingLink.url,
+      title: editingLink.title,
+      comment: editingLink.comment ?? undefined,
+      tagIds: editingLink.tags.map((tag) => tag.id),
+      newTags: [],
+    };
+  }, [editingLink]);
+
+  const editingInitialMetadata = useMemo(() => {
+    if (!editingLink) {
+      return null;
+    }
+
+    const parsed = parseLinkMetadata(editingLink.metadataSource);
+    if (parsed) {
+      return parsed;
+    }
+
+    if (editingLink.favIconPath) {
+      return {
+        title: editingLink.title,
+        favIconUrl: editingLink.favIconPath,
+        source: "stub" as const,
+        fetchedAt: editingLink.updatedAt,
+      };
+    }
+
+    return null;
+  }, [editingLink]);
+
+  const handleCreate = async (values: LinkFormValues & { metadata?: LinkMetadata | null }) => {
+    await createMutation.mutateAsync(values);
+  };
+
+  const handleUpdate = async (values: LinkFormValues & { metadata?: LinkMetadata | null }) => {
+    if (!editingLink) {
+      return;
+    }
+
+    await updateMutation.mutateAsync({ ...values, id: editingLink.id });
+  };
+
+  const handleDelete = async (linkId: string, label: string) => {
+    if (typeof window !== "undefined") {
+      const confirmed = window.confirm(`Удалить ссылку «${label}»?`);
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    setDeleteError(null);
+    setPendingDeleteId(linkId);
+
+    try {
+      await deleteMutation.mutateAsync({ id: linkId });
+      if (editingLinkId === linkId) {
+        setEditingLinkId(null);
+      }
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error ? error.message : "Не удалось удалить ссылку. Попробуйте позже.",
+      );
+    } finally {
+      setPendingDeleteId(null);
+    }
+  };
 
   return (
     <section className="flex w-full flex-col gap-6">
@@ -67,6 +162,21 @@ export function LinksWorkspace({ initialFilters, initialLinks, initialTags }: Li
         </article>
       </div>
 
+      <article className="rounded-xl border border-border bg-card/60 p-5 shadow-sm">
+        <div className="mb-4 space-y-1">
+          <h2 className="text-lg font-semibold tracking-tight text-foreground">Добавить ссылку</h2>
+          <p className="text-sm text-muted-foreground">
+            Вставьте URL, получите метаданные и выберите подходящие теги.
+          </p>
+        </div>
+        <LinkForm
+          mode="create"
+          availableTags={tagsData}
+          isSubmitting={createMutation.isPending}
+          onSubmit={handleCreate}
+        />
+      </article>
+
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-2">
           <div>
@@ -81,6 +191,7 @@ export function LinksWorkspace({ initialFilters, initialLinks, initialTags }: Li
             <span className="text-xs text-muted-foreground">Обновление данных...</span>
           ) : null}
         </div>
+        {deleteError ? <p className="text-sm text-destructive">{deleteError}</p> : null}
         <div className="rounded-xl border border-border bg-card/60 p-5 shadow-sm">
           {previewItems.length === 0 ? (
             <p className="text-sm text-muted-foreground">Вы ещё не сохраняли ссылки.</p>
@@ -117,6 +228,40 @@ export function LinksWorkspace({ initialFilters, initialLinks, initialTags }: Li
                           {tag.name}
                         </span>
                       ))}
+                    </div>
+                  ) : null}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditingLinkId(link.id)}
+                      disabled={updateMutation.isPending && editingLinkId === link.id}
+                    >
+                      Редактировать
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(link.id, link.title || link.url)}
+                      disabled={pendingDeleteId === link.id || deleteMutation.isPending}
+                    >
+                      {pendingDeleteId === link.id ? "Удаление..." : "Удалить"}
+                    </Button>
+                  </div>
+                  {editingLinkId === link.id && editingInitialValues ? (
+                    <div className="rounded-lg border border-border bg-background/60 p-4">
+                      <LinkForm
+                        mode="edit"
+                        availableTags={tagsData}
+                        initialValues={editingInitialValues}
+                        initialMetadata={editingInitialMetadata}
+                        isSubmitting={updateMutation.isPending}
+                        onSubmit={handleUpdate}
+                        onCancel={() => setEditingLinkId(null)}
+                        onSuccess={() => setEditingLinkId(null)}
+                      />
                     </div>
                   ) : null}
                 </li>

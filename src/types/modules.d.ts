@@ -34,14 +34,36 @@ declare module "@supabase/supabase-js" {
   }
 
   export interface SupabaseQueryBuilder<Row = unknown> {
-    select(columns: string, options?: Record<string, unknown>): SupabaseQueryBuilder<Row>;
+    select(columns?: string, options?: Record<string, unknown>): SupabaseQueryBuilder<Row>;
+    insert(
+      values: Partial<Row> | Partial<Row>[],
+      options?: Record<string, unknown>,
+    ): SupabaseQueryBuilder<Row>;
+    upsert(
+      values: Partial<Row> | Partial<Row>[],
+      options?: Record<string, unknown>,
+    ): SupabaseQueryBuilder<Row>;
+    update(values: Partial<Row>, options?: Record<string, unknown>): SupabaseQueryBuilder<Row>;
+    delete(options?: Record<string, unknown>): SupabaseQueryBuilder<Row>;
     order(
       column: string,
       options?: { ascending?: boolean; nullsFirst?: boolean; foreignTable?: string },
-    ): Promise<SupabaseQueryResponse<Row>>;
+    ): SupabaseQueryBuilder<Row>;
     eq(column: string, value: unknown): SupabaseQueryBuilder<Row>;
+    in(column: string, values: unknown[]): SupabaseQueryBuilder<Row>;
+    limit(count: number): SupabaseQueryBuilder<Row>;
     maybeSingle(): Promise<SupabaseSingleResponse<Row>>;
     single(): Promise<SupabaseSingleResponse<Row>>;
+    then<TResult1 = SupabaseQueryResponse<Row>, TResult2 = never>(
+      onfulfilled?:
+        | ((value: SupabaseQueryResponse<Row>) => TResult1 | PromiseLike<TResult1>)
+        | null,
+      onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+    ): Promise<TResult1 | TResult2>;
+    catch<TResult = never>(
+      onrejected?: ((reason: unknown) => TResult | PromiseLike<TResult>) | null,
+    ): Promise<SupabaseQueryResponse<Row> | TResult>;
+    finally(onfinally?: (() => void) | null): Promise<SupabaseQueryResponse<Row>>;
   }
 
   export interface SupabaseAuthSession {
