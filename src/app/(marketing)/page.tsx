@@ -1,3 +1,4 @@
+import type { Route } from "next";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -28,12 +29,12 @@ export default function HomePage() {
         </div>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Button asChild size="lg">
-            <Link href="/docs/architecture.md" className="no-underline">
+            <Link href={"/docs/architecture.md" as Route} className="no-underline">
               Ознакомиться с архитектурой
             </Link>
           </Button>
           <Button asChild variant="outline" size="lg">
-            <Link href="/docs/brief.md" className="no-underline">
+            <Link href={"/docs/brief.md" as Route} className="no-underline">
               Прочитать бриф
             </Link>
           </Button>

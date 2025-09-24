@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node ./scripts/run-vitest.mjs",
     "test:watch": "node ./scripts/run-vitest.mjs --watch",
+    "test:e2e": "playwright test --config=playwright.config.ts --project=chromium",
+    "test:a11y": "playwright test --config=playwright.a11y.config.ts --project=chromium",
     "prepare": "husky install"
   },
   "dependencies": {
@@ -31,7 +33,9 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
     "@eslint/eslintrc": "^3.1.0",
+    "@playwright/test": "^1.48.2",
     "@testing-library/jest-dom": "^6.4.5",
     "@testing-library/react": "^16.0.1",
     "@testing-library/user-event": "^14.5.2",
@@ -39,6 +43,7 @@
     "@types/papaparse": "^5.3.16",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
+    "@vitest/coverage-v8": "^2.1.9",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.32",

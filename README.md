@@ -42,6 +42,18 @@ Next.js 14 приложение для управления ссылками с 
 - `pnpm typecheck` — проверка типов (`tsc --noEmit`)
 - `pnpm test` — запуск тестов в headless-режиме (`vitest run`)
 - `pnpm test:watch` — запуск тестов в watch-режиме
+- `pnpm test:e2e` — сквозные сценарии Playwright с автоматическим поднятием dev-сервера
+- `pnpm test:a11y` — a11y-проверки на базе axe-core + Playwright
+
+## Тестирование и качество
+
+- `pnpm test` запускает unit и integration тесты через Vitest.
+- `pnpm test --coverage` формирует отчёт покрытия (`coverage/lcov-report`). Пороговые значения: ≥65% для statements/lines, ≥70% для functions и ≥60% для branches.
+- `pnpm test:e2e` выполняет сквозные сценарии маркетинговой страницы. Используется в CI и перед релизами как smoke-тест.
+- `pnpm test:a11y` проверяет основные страницы на соответствие WCAG 2.1 AA с помощью axe-core.
+- `pnpm lint` и `pnpm typecheck` обеспечивают качество кода и типобезопасность.
+
+Детальная карта проверок и деплоя описана в [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ## Настройка Supabase
 
@@ -59,7 +71,14 @@ Next.js 14 приложение для управления ссылками с 
 
 ## Pre-commit хуки
 
-В репозитории настроен `husky` с `lint-staged`: перед коммитом автоматически выполняются ESLint, Prettier и `pnpm typecheck`.
+В репозитории настроен `husky` с `lint-staged`: перед коммитом автоматически выполняются ESLint/Prettier для изменённых файлов, затем `pnpm typecheck` и полный прогон `pnpm test`.
+
+## CI/CD и деплой
+
+- Workflow `.github/workflows/ci.yml` запускает lint, typecheck, unit/integration тесты с покрытием, а также Playwright e2e/a11y проверки на каждом PR и push в `main`.
+- При наличии секрета `SUPABASE_DB_URL` дополнительно выполняется `supabase db lint`/`db push`.
+- Деплой на Vercel выполняется из той же workflow после успешных проверок. Необходимы секреты `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.
+- Пошаговый runbook и чеклисты приведены в [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ## Дополнительные материалы
 

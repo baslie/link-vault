@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -21,7 +22,22 @@ describe("LinksSearchControls", () => {
     const onSearchChange = vi.fn();
     const user = userEvent.setup();
 
-    render(<LinksSearchControls {...baseProps} onSearchChange={onSearchChange} />);
+    function Wrapper() {
+      const [value, setValue] = useState("");
+
+      return (
+        <LinksSearchControls
+          {...baseProps}
+          search={value}
+          onSearchChange={(next) => {
+            setValue(next);
+            onSearchChange(next);
+          }}
+        />
+      );
+    }
+
+    render(<Wrapper />);
 
     const input = screen.getByLabelText("Поиск по ссылкам");
     await user.type(input, "design");
