@@ -26,10 +26,11 @@ for (let index = 0; index < rawArgs.length; index += 1) {
 }
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
-const binary = process.platform === "win32" ? "vitest.cmd" : "vitest";
-const vitestBinPath = resolve(scriptDir, "../node_modules/.bin", binary);
+const vitestEntrypoint = resolve(scriptDir, "../node_modules/vitest/vitest.mjs");
 
-const child = spawn(vitestBinPath, vitestArgs, { stdio: "inherit" });
+const child = spawn(process.execPath, [vitestEntrypoint, ...vitestArgs], {
+  stdio: "inherit",
+});
 
 child.on("exit", (code, signal) => {
   if (signal) {
