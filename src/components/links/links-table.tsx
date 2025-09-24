@@ -68,7 +68,7 @@ function buildInitialMetadata(link: LinkListItem): LinkMetadata | null {
     return {
       title: link.title,
       favIconUrl: link.favIconPath,
-      source: "stub",
+      source: "cache",
       fetchedAt: link.updatedAt,
     } satisfies LinkMetadata;
   }

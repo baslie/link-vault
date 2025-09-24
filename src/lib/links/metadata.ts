@@ -1,51 +1,75 @@
 import { z } from "zod";
 
+import { buildFaviconGeneratorUrl } from "@/lib/metadata/utils";
 import type { Json } from "@/lib/supabase/types";
+
+const metadataSourceSchema = z.enum(["stub", "remote", "fallback", "cache"]);
 
 export const linkMetadataSchema = z.object({
   title: z.string().trim().optional(),
   description: z.string().trim().optional(),
   favIconUrl: z.string().trim().url().optional().nullable(),
-  source: z.literal("stub"),
+  favIconStoragePath: z.string().trim().optional().nullable(),
+  source: metadataSourceSchema,
   fetchedAt: z.string(),
 });
 
 export type LinkMetadata = z.infer<typeof linkMetadataSchema>;
+export type LinkMetadataSource = z.infer<typeof metadataSourceSchema>;
 
-function toTitleCase(hostname: string) {
-  const base = hostname
-    .split(".")
-    .filter((segment) => segment !== "www")
-    .shift();
+const metadataResponseSchema = z.object({
+  metadata: linkMetadataSchema,
+});
 
-  if (!base) {
-    return hostname;
-  }
+const metadataErrorSchema = z.object({
+  error: z.string(),
+});
 
-  return base.charAt(0).toUpperCase() + base.slice(1);
-}
-
-function buildFaviconUrl(hostname: string) {
-  return `https://www.google.com/s2/favicons?sz=64&domain=${hostname}`;
+function buildRequestUrl(url: string) {
+  const params = new URLSearchParams({ url });
+  return `/api/metadata?${params.toString()}`;
 }
 
 export async function fetchLinkMetadata(rawUrl: string): Promise<LinkMetadata> {
-  let parsed: URL;
+  let normalizedUrl: URL;
 
   try {
-    parsed = new URL(rawUrl);
+    normalizedUrl = new URL(rawUrl);
   } catch {
     throw new Error("Не удалось получить метаданные: некорректный URL");
   }
 
-  const title = toTitleCase(parsed.hostname);
+  const endpoint = buildRequestUrl(normalizedUrl.toString());
 
-  return linkMetadataSchema.parse({
-    title,
-    favIconUrl: buildFaviconUrl(parsed.hostname),
-    source: "stub",
-    fetchedAt: new Date().toISOString(),
-  });
+  let response: Response;
+  try {
+    response = await fetch(endpoint, { method: "GET" });
+  } catch {
+    throw new Error("Не удалось обратиться к сервису метаданных");
+  }
+
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new Error("Некорректный ответ сервиса метаданных");
+  }
+
+  if (!response.ok) {
+    const parsedError = metadataErrorSchema.safeParse(payload);
+    if (parsedError.success) {
+      throw new Error(parsedError.data.error);
+    }
+
+    throw new Error("Не удалось получить метаданные");
+  }
+
+  const parsed = metadataResponseSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new Error("Не удалось обработать ответ сервиса метаданных");
+  }
+
+  return parsed.data.metadata;
 }
 
 export function parseLinkMetadata(value: Json | null): LinkMetadata | null {
@@ -67,8 +91,23 @@ export function resolveMetadataIcon(
 
   try {
     const parsed = new URL(fallbackUrl);
-    return buildFaviconUrl(parsed.hostname);
+    return buildFaviconGeneratorUrl(parsed.hostname);
   } catch {
     return null;
   }
+}
+
+const METADATA_SOURCE_LABELS: Record<LinkMetadataSource, string> = {
+  remote: "Страница сайта",
+  fallback: "Резервный источник",
+  cache: "Кэш Supabase",
+  stub: "Служебная заглушка",
+};
+
+export function getMetadataSourceLabel(source?: LinkMetadataSource): string {
+  if (!source) {
+    return "Автозаполнение";
+  }
+
+  return METADATA_SOURCE_LABELS[source];
 }
