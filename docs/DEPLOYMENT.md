@@ -71,6 +71,7 @@
    - `pnpm typecheck`
    - `pnpm test` (unit/integration)
    - `pnpm test --coverage`
+   - `pnpm exec playwright install` (одноразовая загрузка браузеров перед e2e/a11y тестами)
    - `pnpm test:e2e` (Playwright, запускает dev-сервер автоматически)
    - `pnpm test:a11y` (axe-core + Playwright)
 6. Завершите работу Supabase после разработки:
