@@ -10,10 +10,11 @@ type Profile = ProfileRecord;
 
 interface AppShellProps {
   profile: Profile | null;
+  isAdmin?: boolean;
   children: ReactNode;
 }
 
-export function AppShell({ profile, children }: AppShellProps) {
+export function AppShell({ profile, isAdmin = false, children }: AppShellProps) {
   const displayName = profile?.display_name?.trim() || profile?.email || "Новый пользователь";
   const email = profile?.email;
 
@@ -34,7 +35,7 @@ export function AppShell({ profile, children }: AppShellProps) {
               <Button type="button" size="sm" className="hidden sm:inline-flex" disabled>
                 Добавить ссылку
               </Button>
-              <ProfileMenu profile={profile} />
+              <ProfileMenu profile={profile} isAdmin={isAdmin} />
             </div>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

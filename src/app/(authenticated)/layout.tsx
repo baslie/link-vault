@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/app/app-shell";
+import { isAdminSession } from "@/lib/admin/utils";
 import { getSupabaseServerComponentClient } from "@/lib/supabase/server";
 
 export default async function AuthenticatedLayout({ children }: { children: ReactNode }) {
@@ -20,5 +21,11 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
     .eq("id", session.user.id)
     .maybeSingle();
 
-  return <AppShell profile={profile ?? null}>{children}</AppShell>;
+  const isAdmin = isAdminSession(session);
+
+  return (
+    <AppShell profile={profile ?? null} isAdmin={isAdmin}>
+      {children}
+    </AppShell>
+  );
 }

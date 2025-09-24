@@ -2,7 +2,7 @@ vi.mock("@/components/app/sign-out-button", () => ({
   SignOutButton: () => <button type="button">Выйти</button>,
 }));
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { AppShell } from "@/components/app/app-shell";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -18,7 +18,7 @@ describe("AppShell", () => {
   function renderShell() {
     return render(
       <ThemeProvider>
-        <AppShell profile={profile}>
+        <AppShell profile={profile} isAdmin>
           <div>Контент</div>
         </AppShell>
       </ThemeProvider>,
@@ -31,7 +31,12 @@ describe("AppShell", () => {
     expect(screen.getByRole("link", { name: "Link Vault" })).toBeVisible();
     expect(screen.getByText("Минималистичный менеджер ссылок")).toBeVisible();
     expect(screen.getByText(profile.email)).toBeVisible();
-    expect(screen.getByRole("searchbox", { name: /глобальный поиск/i })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("searchbox", { name: /глобальный поиск/i })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    fireEvent.click(screen.getByRole("button", { name: /ан/i }));
+    expect(screen.getByRole("link", { name: "Админ-панель" })).toBeVisible();
   });
 
   it("соответствует снепшоту", () => {

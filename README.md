@@ -51,6 +51,12 @@ Next.js 14 приложение для управления ссылками с 
 - Проверь миграции: `pnpm exec supabase db push --dry-run`. Для полной перезагрузки с сид-данными используй `pnpm exec supabase db reset --seed` (прочитает `supabase/migrations` и `supabase/seed.sql`).
 - Детальная пошаговая инструкция размещена в [`docs/supabase-setup.md`](docs/supabase-setup.md).
 
+## Аналитика
+
+- Для подключения счётчиков укажи в `.env.local` переменные `YANDEX_METRIKA_ID` и/или `GA_TRACKING_ID`.
+- После развертывания идентификаторы передаются в компонент аналитики, который добавляет `gtag.js` и тег Яндекс.Метрики и пробрасывает кастомные события (`link_created`, `import_completed`, `export_generated`, `theme_changed`).
+- Отправка событий происходит на уровне клиентских хуков и компонентов, поэтому данные доступны и локально (при наличии переменных окружения), и в production.
+
 ## Pre-commit хуки
 
 В репозитории настроен `husky` с `lint-staged`: перед коммитом автоматически выполняются ESLint, Prettier и `pnpm typecheck`.
@@ -59,3 +65,4 @@ Next.js 14 приложение для управления ссылками с 
 
 - [Бриф продукта](docs/brief.md)
 - [Архитектурная схема](docs/architecture.md)
+- [Мониторинг и метрики](docs/monitoring.md)

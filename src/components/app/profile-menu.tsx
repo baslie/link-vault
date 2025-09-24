@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { LogOut, Settings, Upload } from "lucide-react";
+import { LogOut, Settings, ShieldCheck, Upload } from "lucide-react";
 
 import { ThemeToggle } from "@/components/app/theme-toggle";
 import { SignOutButton } from "@/components/app/sign-out-button";
@@ -10,6 +10,7 @@ import type { ProfileRecord } from "@/lib/profile/schema";
 
 interface ProfileMenuProps {
   profile: ProfileRecord | null;
+  isAdmin?: boolean;
 }
 
 function buildInitials(name?: string | null, email?: string | null) {
@@ -22,7 +23,7 @@ function buildInitials(name?: string | null, email?: string | null) {
   return first.slice(0, 2).toUpperCase();
 }
 
-export function ProfileMenu({ profile }: ProfileMenuProps) {
+export function ProfileMenu({ profile, isAdmin = false }: ProfileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -75,6 +76,16 @@ export function ProfileMenu({ profile }: ProfileMenuProps) {
               <Settings className="h-4 w-4" aria-hidden />
               Настройки профиля
             </Link>
+            {isAdmin ? (
+              <Link
+                href="/admin"
+                className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground transition hover:bg-muted"
+                onClick={() => setIsOpen(false)}
+              >
+                <ShieldCheck className="h-4 w-4" aria-hidden />
+                Админ-панель
+              </Link>
+            ) : null}
             <Link
               href="/app/import"
               className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground transition hover:bg-muted"
