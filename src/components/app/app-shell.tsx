@@ -2,12 +2,11 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { GlobalSearch } from "@/components/app/global-search";
-import { SignOutButton } from "@/components/app/sign-out-button";
-import { ThemeToggle } from "@/components/app/theme-toggle";
+import { ProfileMenu } from "@/components/app/profile-menu";
 import { Button } from "@/components/ui/button";
-import type { Tables } from "@/lib/supabase/types";
+import type { ProfileRecord } from "@/lib/profile/schema";
 
-type Profile = Pick<Tables<"profiles">, "id" | "email" | "display_name" | "theme">;
+type Profile = ProfileRecord;
 
 interface AppShellProps {
   profile: Profile | null;
@@ -35,8 +34,7 @@ export function AppShell({ profile, children }: AppShellProps) {
               <Button type="button" size="sm" className="hidden sm:inline-flex" disabled>
                 Добавить ссылку
               </Button>
-              <ThemeToggle />
-              <SignOutButton />
+              <ProfileMenu profile={profile} />
             </div>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -44,7 +42,11 @@ export function AppShell({ profile, children }: AppShellProps) {
             <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
               <div className="text-sm text-muted-foreground sm:text-right">
                 <p className="font-medium text-foreground">{displayName}</p>
-                {email ? <p className="text-xs">{email}</p> : <p className="text-xs">Профиль загружается...</p>}
+                {email ? (
+                  <p className="text-xs">{email}</p>
+                ) : (
+                  <p className="text-xs">Профиль загружается...</p>
+                )}
               </div>
               <Button type="button" size="sm" className="sm:hidden" disabled>
                 Добавить ссылку
@@ -53,7 +55,9 @@ export function AppShell({ profile, children }: AppShellProps) {
           </div>
         </div>
       </header>
-      <main className="container mx-auto flex w-full max-w-6xl flex-1 px-4 py-10 sm:px-6 lg:py-12">{children}</main>
+      <main className="container mx-auto flex w-full max-w-6xl flex-1 px-4 py-10 sm:px-6 lg:py-12">
+        {children}
+      </main>
     </div>
   );
 }
