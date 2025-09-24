@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -57,6 +57,7 @@ const baseProps: Omit<LinksTableProps, "editingLinkId" | "onEditLink" | "onCance
     dateTo: undefined,
   },
   availableTags: tags,
+  searchTokens: [],
   formatDate: (value) => dateFormatter.format(new Date(value)),
   isLoading: false,
   isFetching: false,
@@ -114,20 +115,27 @@ describe("LinksTable", () => {
   it("renders link rows with details", () => {
     renderLinksTable();
 
-    expect(screen.getByText("Example site")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: baseLink.url })).toHaveAttribute("href", baseLink.url);
-    expect(screen.getByText("Design")).toBeInTheDocument();
+    const desktopTable = screen.getByTestId("links-table-desktop");
+
+    expect(within(desktopTable).getByText("Example site")).toBeInTheDocument();
+    expect(within(desktopTable).getByRole("link", { name: baseLink.url })).toHaveAttribute(
+      "href",
+      baseLink.url,
+    );
+    expect(within(desktopTable).getByText("Design")).toBeInTheDocument();
     expect(screen.getByText(/Показано 1–1 из 1 записей/)).toBeInTheDocument();
   });
 
   it("allows inline editing via the link form", async () => {
     const { user, onSubmitEdit } = renderLinksTable();
 
-    await user.click(screen.getByRole("button", { name: "Редактировать" }));
+    const desktopTable = screen.getByTestId("links-table-desktop");
 
-    expect(screen.getByLabelText("Ссылка")).toHaveValue(baseLink.url);
+    await user.click(within(desktopTable).getByRole("button", { name: "Редактировать" }));
 
-    await user.click(screen.getByRole("button", { name: "Сохранить изменения" }));
+    expect(within(desktopTable).getByLabelText("Ссылка")).toHaveValue(baseLink.url);
+
+    await user.click(within(desktopTable).getByRole("button", { name: "Сохранить изменения" }));
 
     await waitFor(() => {
       expect(onSubmitEdit).toHaveBeenCalledTimes(1);
@@ -144,7 +152,9 @@ describe("LinksTable", () => {
   it("forwards delete requests", async () => {
     const { user, onDeleteLink } = renderLinksTable();
 
-    await user.click(screen.getByRole("button", { name: "Удалить" }));
+    const desktopTable = screen.getByTestId("links-table-desktop");
+
+    await user.click(within(desktopTable).getByRole("button", { name: "Удалить" }));
 
     expect(onDeleteLink).toHaveBeenCalledWith(baseLink.id, baseLink.title);
   });
@@ -170,5 +180,28 @@ describe("LinksTable", () => {
     await user.click(screen.getByRole("button", { name: "Вперёд" }));
 
     expect(onChangePage).toHaveBeenCalledWith(2);
+  });
+
+  it("highlights search matches in table cells", () => {
+    const searchableLink: LinkListItem = {
+      ...baseLink,
+      title: "React Patterns",
+      url: "https://react.dev/patterns",
+      comment: "React best practices",
+      tags: [{ id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", name: "React", color: "#22c55e" }],
+    };
+
+    renderLinksTable({
+      data: { ...baseResult, items: [searchableLink] },
+      filters: { ...baseProps.filters, search: "react" },
+      searchTokens: ["react"],
+    });
+
+    const desktopTable = screen.getByTestId("links-table-desktop");
+    const rows = within(desktopTable).getAllByRole("row");
+    const dataRow = rows[1];
+
+    const highlights = within(dataRow).getAllByText(/react/i, { selector: "mark" });
+    expect(highlights.length).toBeGreaterThanOrEqual(3);
   });
 });

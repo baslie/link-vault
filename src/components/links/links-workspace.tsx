@@ -10,6 +10,7 @@ import {
   useUpdateLinkMutation,
 } from "@/hooks/use-link-mutations";
 import { LinkForm } from "@/components/links/link-form";
+import { LinksSearchControls } from "@/components/links/links-search-controls";
 import { LinksTable } from "@/components/links/links-table";
 import { TagBar } from "@/components/links/tag-bar";
 import type { LinkMetadata } from "@/lib/links/metadata";
@@ -42,6 +43,20 @@ export function LinksWorkspace({ initialFilters, initialLinks, initialTags }: Li
   );
 
   const [filters, setFilters] = useState<LinkListQueryFilters>(initialFilters);
+  const searchTokens = useMemo(() => {
+    if (!filters.search) {
+      return [] as string[];
+    }
+
+    const unique = new Set<string>();
+    filters.search
+      .split(/\s+/)
+      .map((token) => token.trim().toLowerCase())
+      .filter((token) => token.length > 0)
+      .forEach((token) => unique.add(token));
+
+    return Array.from(unique);
+  }, [filters.search]);
 
   const linksQuery = useLinksQuery(filters, {
     initialData: initialLinks,
@@ -106,6 +121,30 @@ export function LinksWorkspace({ initialFilters, initialLinks, initialTags }: Li
 
   const handleChangePerPage = useCallback((perPage: number) => {
     setFilters((previous) => ({ ...previous, perPage, page: 1 }));
+  }, []);
+
+  const handleSearchChange = useCallback((value: string) => {
+    setFilters((previous) => {
+      const trimmed = value.trim();
+
+      return {
+        ...previous,
+        search: trimmed.length > 0 ? value : undefined,
+        page: 1,
+      } satisfies LinkListQueryFilters;
+    });
+  }, []);
+
+  const handleClearSearch = useCallback(() => {
+    setFilters((previous) => ({ ...previous, search: undefined, page: 1 }));
+  }, []);
+
+  const handleSortChange = useCallback((sort: LinkListQueryFilters["sort"]) => {
+    setFilters((previous) => ({ ...previous, sort, page: 1 }));
+  }, []);
+
+  const handleOrderChange = useCallback((order: LinkListQueryFilters["order"]) => {
+    setFilters((previous) => ({ ...previous, order, page: 1 }));
   }, []);
 
   const handleToggleTag = useCallback((tagId: string) => {
@@ -195,6 +234,17 @@ export function LinksWorkspace({ initialFilters, initialLinks, initialTags }: Li
         />
       </article>
 
+      <LinksSearchControls
+        search={filters.search ?? ""}
+        sort={filters.sort}
+        order={filters.order}
+        isFetching={linksQuery.isFetching}
+        onSearchChange={handleSearchChange}
+        onClearSearch={handleClearSearch}
+        onSortChange={handleSortChange}
+        onOrderChange={handleOrderChange}
+      />
+
       <TagBar
         tags={tagsData}
         selectedTagIds={filters.tagIds ?? []}
@@ -227,6 +277,7 @@ export function LinksWorkspace({ initialFilters, initialLinks, initialTags }: Li
         onRetry={linksQuery.error ? () => linksQuery.refetch() : undefined}
         onChangePage={handleChangePage}
         onChangePerPage={handleChangePerPage}
+        searchTokens={searchTokens}
       />
     </section>
   );
