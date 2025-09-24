@@ -11,6 +11,7 @@ import {
 } from "@/hooks/use-link-mutations";
 import { LinkForm } from "@/components/links/link-form";
 import { LinksTable } from "@/components/links/links-table";
+import { TagBar } from "@/components/links/tag-bar";
 import type { LinkMetadata } from "@/lib/links/metadata";
 import type { LinkListQueryFilters, LinkListResult } from "@/lib/links/query";
 import type { TagSummary } from "@/lib/tags/types";
@@ -107,6 +108,43 @@ export function LinksWorkspace({ initialFilters, initialLinks, initialTags }: Li
     setFilters((previous) => ({ ...previous, perPage, page: 1 }));
   }, []);
 
+  const handleToggleTag = useCallback((tagId: string) => {
+    setFilters((previous) => {
+      const currentTagIds = previous.tagIds ?? [];
+      const hasTag = currentTagIds.includes(tagId);
+      const nextTagIds = hasTag
+        ? currentTagIds.filter((id) => id !== tagId)
+        : [...currentTagIds, tagId];
+
+      return {
+        ...previous,
+        tagIds: nextTagIds.length > 0 ? nextTagIds : undefined,
+        page: 1,
+      };
+    });
+  }, []);
+
+  const handleResetTags = useCallback(() => {
+    setFilters((previous) => ({ ...previous, tagIds: undefined, page: 1 }));
+  }, []);
+
+  const handleTagDeleted = useCallback((tagId: string) => {
+    setFilters((previous) => {
+      const currentTagIds = previous.tagIds ?? [];
+      if (!currentTagIds.includes(tagId)) {
+        return previous;
+      }
+
+      const nextTagIds = currentTagIds.filter((id) => id !== tagId);
+
+      return {
+        ...previous,
+        tagIds: nextTagIds.length > 0 ? nextTagIds : undefined,
+        page: 1,
+      };
+    });
+  }, []);
+
   const formatDateValue = useCallback(
     (value: string) => formatDate(value, dateFormatter),
     [dateFormatter],
@@ -156,6 +194,18 @@ export function LinksWorkspace({ initialFilters, initialLinks, initialTags }: Li
           onSubmit={handleCreate}
         />
       </article>
+
+      <TagBar
+        tags={tagsData}
+        selectedTagIds={filters.tagIds ?? []}
+        onToggleTag={handleToggleTag}
+        onReset={handleResetTags}
+        onTagDeleted={handleTagDeleted}
+        isLoading={tagsQuery.isLoading && tagsData.length === 0}
+        isRefreshing={tagsQuery.isFetching}
+        error={tagsQuery.error?.message}
+        onRetry={tagsQuery.error ? () => tagsQuery.refetch() : undefined}
+      />
 
       <LinksTable
         data={linksData}
