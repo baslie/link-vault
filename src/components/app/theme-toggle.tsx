@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
+import { trackAnalyticsEvent } from "@/lib/analytics/track";
 
 export function ThemeToggle() {
   const { resolvedTheme, theme, setTheme } = useTheme();
@@ -14,11 +15,13 @@ export function ThemeToggle() {
     setIsMounted(true);
   }, []);
 
-  const activeTheme = (isMounted ? resolvedTheme ?? theme : theme) ?? "light";
+  const activeTheme = (isMounted ? (resolvedTheme ?? theme) : theme) ?? "light";
   const isDark = activeTheme === "dark";
 
   function handleToggle() {
-    setTheme(isDark ? "light" : "dark");
+    const nextTheme = isDark ? "light" : "dark";
+    trackAnalyticsEvent("theme_changed", { theme: nextTheme });
+    setTheme(nextTheme);
   }
 
   return (

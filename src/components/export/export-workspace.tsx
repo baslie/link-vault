@@ -10,6 +10,7 @@ import { useTagsQuery } from "@/hooks/use-tags-query";
 import { requestExport } from "@/lib/export/client";
 import type { ExportRequestPayload, ExportScope } from "@/lib/export/types";
 import { LINK_SORT_FIELDS, LINK_SORT_ORDERS } from "@/lib/links/query";
+import { trackAnalyticsEvent } from "@/lib/analytics/track";
 
 const DEFAULT_SCOPE: ExportScope = "all";
 
@@ -71,8 +72,11 @@ export function ExportWorkspace() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
+    let selectedCount: number | undefined;
+
     if (scope === "selected") {
       const ids = parseIds(selectedIds);
+      selectedCount = ids.length;
       if (ids.length === 0) {
         setErrorMessage("Укажите хотя бы один идентификатор ссылки");
         return;
@@ -92,6 +96,14 @@ export function ExportWorkspace() {
       anchor.remove();
       URL.revokeObjectURL(blobUrl);
       setSuccessMessage(`Экспорт сформирован: ${result.filename}`);
+      trackAnalyticsEvent("export_generated", {
+        scope,
+        hasFilters:
+          scope === "filters"
+            ? Boolean(search.trim() || selectedTags.length > 0 || dateFrom || dateTo)
+            : false,
+        selectedCount,
+      });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Не удалось выполнить экспорт");
     } finally {

@@ -142,6 +142,27 @@ export interface Database {
           },
         ];
       };
+      monitoring_events: {
+        Row: {
+          created_at: string;
+          event_type: string;
+          id: string;
+          payload: Json;
+        };
+        Insert: {
+          created_at?: string;
+          event_type: string;
+          id?: string;
+          payload: Json;
+        };
+        Update: {
+          created_at?: string;
+          event_type?: string;
+          id?: string;
+          payload?: Json;
+        };
+        Relationships: [];
+      };
       links: {
         Row: {
           comment: string | null;
@@ -255,6 +276,30 @@ export interface Database {
       };
     };
     Views: {
+      admin_activity_by_day: {
+        Row: {
+          activity_date: string;
+          links_count: number;
+        };
+        Relationships: [];
+      };
+      admin_links_by_user: {
+        Row: {
+          display_name: string;
+          email: string | null;
+          links_count: number;
+          user_id: string;
+        };
+        Relationships: [];
+      };
+      admin_popular_tags: {
+        Row: {
+          color: string;
+          tag_name: string;
+          usage_count: number;
+        };
+        Relationships: [];
+      };
       links_with_tags: {
         Row: {
           comment: string | null;
@@ -275,6 +320,10 @@ export interface Database {
       };
     };
     Functions: {
+      admin_dashboard_summary: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
       search_links: {
         Args: {
           p_search?: string | null;

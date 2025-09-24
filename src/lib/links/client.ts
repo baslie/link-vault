@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { LinkListQueryFilters, LinkListResult } from "@/lib/links/query";
 import { buildLinksQueryParams } from "@/lib/links/query";
+import { logMonitoringEvent } from "@/lib/monitoring/client";
 import type { Json } from "@/lib/supabase/types";
 
 const linkTagSchema = z.object({
@@ -47,6 +48,7 @@ export async function fetchLinks(
   filters: LinkListQueryFilters,
   init?: RequestInit,
 ): Promise<LinkListResult> {
+  const startedAt = typeof performance !== "undefined" ? performance.now() : null;
   const response = await fetch(createLinksApiUrl(filters), {
     method: "GET",
     credentials: "include",
@@ -54,17 +56,47 @@ export async function fetchLinks(
   });
 
   if (!response.ok) {
+    if (typeof window !== "undefined" && startedAt !== null) {
+      void logMonitoringEvent({
+        eventType: "search_performance",
+        details: {
+          durationMs: Math.round(performance.now() - startedAt),
+          status: "error",
+          query: filters.search,
+        },
+        context: {
+          url: window.location.href,
+        },
+      });
+    }
+
     throw new Error(`Не удалось загрузить ссылки: ${response.statusText}`);
   }
 
   const payload = await response.json();
   const parsed = linksResponseSchema.parse(payload);
 
-  return {
+  const result: LinkListResult = {
     items: parsed.items.map((item) => ({
       ...item,
       metadataSource: item.metadataSource as Json | null,
     })),
     pagination: parsed.pagination,
   };
+
+  if (typeof window !== "undefined" && startedAt !== null) {
+    void logMonitoringEvent({
+      eventType: "search_performance",
+      details: {
+        durationMs: Math.round(performance.now() - startedAt),
+        status: "success",
+        query: filters.search,
+      },
+      context: {
+        url: window.location.href,
+      },
+    });
+  }
+
+  return result;
 }

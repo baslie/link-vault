@@ -10,6 +10,7 @@ import {
   type DeleteLinkInput,
   type UpdateLinkInput,
 } from "@/lib/links/mutations";
+import { trackAnalyticsEvent } from "@/lib/analytics/track";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 function invalidateLinkData(queryClient: ReturnType<typeof useQueryClient>) {
@@ -26,7 +27,11 @@ export function useCreateLinkMutation() {
 
   return useMutation({
     mutationFn: (input: CreateLinkInput) => createLink(supabase, input),
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
+      trackAnalyticsEvent("link_created", {
+        tags: variables.tagIds?.length ?? 0,
+        newTags: variables.newTags?.length ?? 0,
+      });
       invalidateLinkData(queryClient);
       invalidateTags(queryClient);
     },
