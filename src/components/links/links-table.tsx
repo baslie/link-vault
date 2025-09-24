@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { LinkForm } from "@/components/links/link-form";
@@ -20,6 +20,7 @@ export interface LinksTableProps {
   data: LinkListResult;
   filters: LinkListQueryFilters;
   availableTags: TagSummary[];
+  searchTokens: string[];
   formatDate: (value: string) => string;
   isLoading: boolean;
   isFetching: boolean;
@@ -44,6 +45,8 @@ export interface LinksTableProps {
 type PageControlItem = number | "ellipsis";
 
 type TagColorStyle = CSSProperties | undefined;
+
+type HighlightFn = (content: string) => ReactNode;
 
 function buildInitialValues(link: LinkListItem): LinkFormValues {
   return {
@@ -92,6 +95,56 @@ function resolveTagDotStyle(tagColor?: string | null): TagColorStyle {
   }
 
   return { backgroundColor: trimmed } satisfies CSSProperties;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
+}
+
+function createHighlighter(tokens: string[]): HighlightFn {
+  const normalized = tokens
+    .map((token) => token.trim().toLowerCase())
+    .filter((token) => token.length > 0);
+
+  if (normalized.length === 0) {
+    return (content: string) => content;
+  }
+
+  const uniqueTokens = Array.from(new Set(normalized));
+  if (uniqueTokens.length === 0) {
+    return (content: string) => content;
+  }
+
+  const pattern = uniqueTokens.map(escapeRegExp).join("|");
+  if (!pattern) {
+    return (content: string) => content;
+  }
+
+  const regex = new RegExp(`(${pattern})`, "gi");
+  const tokenSet = new Set(uniqueTokens);
+
+  return (content: string) => {
+    if (!content) {
+      return content;
+    }
+
+    return content.split(regex).map((segment, index) => {
+      if (!segment) {
+        return <Fragment key={`empty-${index}`} />;
+      }
+
+      const lowerSegment = segment.toLowerCase();
+      if (tokenSet.has(lowerSegment)) {
+        return (
+          <mark key={`mark-${index}`} className="rounded bg-primary/20 px-0.5 py-0 text-primary">
+            {segment}
+          </mark>
+        );
+      }
+
+      return <Fragment key={`text-${index}`}>{segment}</Fragment>;
+    });
+  };
 }
 
 function buildPageItems(current: number, total: number): PageControlItem[] {
@@ -157,7 +210,15 @@ function formatRange(
   )} записей`;
 }
 
-function LinksTableTag({ name, color }: { name: string; color: string }) {
+function LinksTableTag({
+  name,
+  color,
+  highlight,
+}: {
+  name: string;
+  color: string;
+  highlight: HighlightFn;
+}) {
   const dotStyle = resolveTagDotStyle(color);
 
   return (
@@ -168,9 +229,139 @@ function LinksTableTag({ name, color }: { name: string; color: string }) {
         aria-hidden
       />
       <span className="truncate" title={name}>
-        {name}
+        {highlight(name)}
       </span>
     </span>
+  );
+}
+
+interface LinkCardProps {
+  link: LinkListItem;
+  highlight: HighlightFn;
+  formatDate: (value: string) => string;
+  availableTags: TagSummary[];
+  isEditing: boolean;
+  onEditLink: (linkId: string) => void;
+  onCancelEdit: () => void;
+  onSubmitEdit: (
+    linkId: string,
+    values: LinkFormValues & { metadata?: LinkMetadata | null },
+  ) => Promise<void>;
+  isEditPending: boolean;
+  onDeleteLink: (linkId: string, label: string) => Promise<void> | void;
+  pendingDeleteId: string | null;
+  isDeletePending: boolean;
+}
+
+function LinkCard({
+  link,
+  highlight,
+  formatDate,
+  availableTags,
+  isEditing,
+  onEditLink,
+  onCancelEdit,
+  onSubmitEdit,
+  isEditPending,
+  onDeleteLink,
+  pendingDeleteId,
+  isDeletePending,
+}: LinkCardProps) {
+  const metadata = buildInitialMetadata(link);
+  const iconUrl = resolveIconUrl(link, metadata);
+  const isDeleting = pendingDeleteId === link.id;
+
+  return (
+    <article className="space-y-3 rounded-xl border border-border bg-card/60 p-4 shadow-sm">
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0">
+          {iconUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={iconUrl} alt="Фавиконка сайта" className="h-10 w-10 rounded" loading="lazy" />
+          ) : (
+            <span className="flex h-10 w-10 items-center justify-center rounded bg-muted text-sm text-muted-foreground">
+              ∅
+            </span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1 space-y-2">
+          <div>
+            <p
+              className="break-words text-base font-semibold text-foreground"
+              title={link.title || link.url}
+            >
+              {highlight(link.title || link.url)}
+            </p>
+            <a
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 block truncate text-sm text-primary hover:underline"
+            >
+              {highlight(link.url)}
+            </a>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {link.comment ? (
+              <p className="whitespace-pre-wrap break-words" title={link.comment}>
+                {highlight(link.comment)}
+              </p>
+            ) : (
+              <span>—</span>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {link.tags.length === 0 ? (
+              <span className="text-xs text-muted-foreground">—</span>
+            ) : (
+              link.tags.map((tag) => (
+                <LinksTableTag
+                  key={tag.id}
+                  name={tag.name}
+                  color={tag.color}
+                  highlight={highlight}
+                />
+              ))
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">Добавлено {formatDate(link.createdAt)}</p>
+        </div>
+      </div>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={isEditing ? "secondary" : "outline"}
+          onClick={() => onEditLink(link.id)}
+          disabled={isEditPending && isEditing}
+        >
+          {isEditing ? "Редактирование" : "Редактировать"}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => onDeleteLink(link.id, link.title || link.url)}
+          disabled={isDeletePending || isDeleting}
+        >
+          {isDeleting ? "Удаление..." : "Удалить"}
+        </Button>
+      </div>
+      {isEditing ? (
+        <div className="rounded-lg border border-border bg-background/80 p-3">
+          <LinkForm
+            mode="edit"
+            availableTags={availableTags}
+            initialValues={buildInitialValues(link)}
+            initialMetadata={metadata}
+            isSubmitting={isEditPending}
+            onSubmit={(values) => onSubmitEdit(link.id, values)}
+            onCancel={onCancelEdit}
+            onSuccess={onCancelEdit}
+          />
+        </div>
+      ) : null}
+    </article>
   );
 }
 
@@ -178,6 +369,7 @@ export function LinksTable({
   data,
   filters,
   availableTags,
+  searchTokens,
   formatDate,
   isLoading,
   isFetching,
@@ -196,6 +388,7 @@ export function LinksTable({
   onChangePerPage,
 }: LinksTableProps) {
   const numberFormatter = useMemo(() => new Intl.NumberFormat("ru-RU"), []);
+  const highlight = useMemo(() => createHighlighter(searchTokens), [searchTokens]);
   const { items, pagination } = data;
 
   const totalPages = Math.max(pagination.pageCount, 1);
@@ -251,7 +444,10 @@ export function LinksTable({
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-xl border border-border bg-card/60 shadow-sm">
+      <div
+        className="hidden overflow-hidden rounded-xl border border-border bg-card/60 shadow-sm md:block"
+        data-testid="links-table-desktop"
+      >
         <div className="overflow-x-auto">
           <table className="min-w-full table-fixed border-collapse">
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -323,7 +519,7 @@ export function LinksTable({
                         </td>
                         <td className="px-4 py-4 align-top text-sm font-medium text-foreground">
                           <p className="break-words" title={link.title || link.url}>
-                            {link.title || link.url}
+                            {highlight(link.title || link.url)}
                           </p>
                         </td>
                         <td className="px-4 py-4 align-top text-sm">
@@ -333,13 +529,13 @@ export function LinksTable({
                             rel="noopener noreferrer"
                             className="block truncate text-primary hover:underline"
                           >
-                            {link.url}
+                            {highlight(link.url)}
                           </a>
                         </td>
                         <td className="px-4 py-4 align-top text-sm text-muted-foreground">
                           {link.comment ? (
                             <p className="whitespace-pre-wrap break-words" title={link.comment}>
-                              {link.comment}
+                              {highlight(link.comment)}
                             </p>
                           ) : (
                             <span>—</span>
@@ -351,7 +547,12 @@ export function LinksTable({
                           ) : (
                             <div className="flex flex-wrap gap-2">
                               {link.tags.map((tag) => (
-                                <LinksTableTag key={tag.id} name={tag.name} color={tag.color} />
+                                <LinksTableTag
+                                  key={tag.id}
+                                  name={tag.name}
+                                  color={tag.color}
+                                  highlight={highlight}
+                                />
                               ))}
                             </div>
                           )}
@@ -407,6 +608,39 @@ export function LinksTable({
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="space-y-3 md:hidden" data-testid="links-list-mobile">
+        {isLoading ? (
+          <div className="rounded-xl border border-border bg-card/60 p-6 text-center text-sm text-muted-foreground">
+            Загрузка ссылок...
+          </div>
+        ) : items.length === 0 ? (
+          <div className="rounded-xl border border-border bg-card/60 p-6 text-center text-sm text-muted-foreground">
+            Ссылок пока нет. Добавьте первую запись с помощью формы выше.
+          </div>
+        ) : (
+          items.map((link) => {
+            const isEditing = editingLinkId === link.id;
+            return (
+              <LinkCard
+                key={link.id}
+                link={link}
+                highlight={highlight}
+                formatDate={formatDate}
+                availableTags={availableTags}
+                isEditing={isEditing}
+                onEditLink={onEditLink}
+                onCancelEdit={onCancelEdit}
+                onSubmitEdit={onSubmitEdit}
+                isEditPending={isEditPending}
+                onDeleteLink={onDeleteLink}
+                pendingDeleteId={pendingDeleteId}
+                isDeletePending={isDeletePending}
+              />
+            );
+          })
+        )}
       </div>
 
       <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
