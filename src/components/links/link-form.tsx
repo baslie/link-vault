@@ -6,7 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { fetchLinkMetadata, resolveMetadataIcon, type LinkMetadata } from "@/lib/links/metadata";
+import {
+  fetchLinkMetadata,
+  getMetadataSourceLabel,
+  resolveMetadataIcon,
+  type LinkMetadata,
+} from "@/lib/links/metadata";
 import { linkFormSchema, type LinkFormValues } from "@/lib/links/schema";
 import type { TagSummary } from "@/lib/tags/types";
 
@@ -291,7 +296,7 @@ export function LinkForm({
                 {metadata?.title || title || url || "Без названия"}
               </p>
               <p className="text-xs text-muted-foreground">
-                Источник: сервис метаданных (заглушка)
+                Источник: {getMetadataSourceLabel(metadata?.source)}
               </p>
             </div>
           </div>

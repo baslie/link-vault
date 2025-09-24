@@ -91,7 +91,7 @@ describe("[links] LinkForm", () => {
     metadataMock.mockResolvedValue({
       title: "Docs Guide",
       favIconUrl: "https://example.com/favicon.ico",
-      source: "stub",
+      source: "remote",
       fetchedAt: new Date().toISOString(),
     });
 

@@ -1,32 +1,73 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   fetchLinkMetadata,
+  getMetadataSourceLabel,
   parseLinkMetadata,
   resolveMetadataIcon,
   type LinkMetadata,
 } from "@/lib/links/metadata";
 
 describe("[links] metadata helpers", () => {
-  it("returns a stub metadata payload", async () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it("parses metadata payloads from the API", async () => {
+    const responsePayload = {
+      metadata: {
+        title: "Docs",
+        description: "API docs",
+        favIconUrl: "https://cdn.local/favicons/docs.png",
+        favIconStoragePath: "user/hash.png",
+        source: "remote" as const,
+        fetchedAt: new Date().toISOString(),
+      },
+    } satisfies { metadata: LinkMetadata };
+
+    global.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(responsePayload), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
     const metadata = await fetchLinkMetadata("https://docs.example.com/guide");
 
     expect(metadata.title).toBe("Docs");
-    expect(metadata.favIconUrl).toContain("docs.example.com");
-    expect(metadata.source).toBe("stub");
-    expect(new Date(metadata.fetchedAt).toString()).not.toBe("Invalid Date");
+    expect(metadata.favIconUrl).toBe("https://cdn.local/favicons/docs.png");
+    expect(metadata.source).toBe("remote");
+    expect(getMetadataSourceLabel(metadata.source)).toBe("Страница сайта");
   });
 
   it("parses metadata objects", () => {
     const payload: LinkMetadata = {
       title: "Example",
       favIconUrl: "https://example.com/favicon.ico",
-      source: "stub",
+      favIconStoragePath: "user/file.ico",
+      source: "cache",
       fetchedAt: new Date().toISOString(),
     };
 
     const parsed = parseLinkMetadata(payload);
     expect(parsed?.title).toBe("Example");
+  });
+
+  it("throws on API errors", async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: "Некорректный URL" }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    await expect(fetchLinkMetadata("https://invalid.example")).rejects.toThrow("Некорректный URL");
   });
 
   it("throws on invalid URLs", async () => {
