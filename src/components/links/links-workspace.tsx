@@ -147,6 +147,42 @@ export function LinksWorkspace({ initialFilters, initialLinks, initialTags }: Li
     setFilters((previous) => ({ ...previous, order, page: 1 }));
   }, []);
 
+  const handleDateFromChange = useCallback((dateFrom?: string) => {
+    setFilters((previous) => {
+      const next: LinkListQueryFilters = {
+        ...previous,
+        dateFrom: dateFrom ?? undefined,
+        page: 1,
+      };
+
+      if (dateFrom && previous.dateTo && previous.dateTo < dateFrom) {
+        next.dateTo = dateFrom;
+      }
+
+      return next;
+    });
+  }, []);
+
+  const handleDateToChange = useCallback((dateTo?: string) => {
+    setFilters((previous) => {
+      const next: LinkListQueryFilters = {
+        ...previous,
+        dateTo: dateTo ?? undefined,
+        page: 1,
+      };
+
+      if (dateTo && previous.dateFrom && previous.dateFrom > dateTo) {
+        next.dateFrom = dateTo;
+      }
+
+      return next;
+    });
+  }, []);
+
+  const handleResetDates = useCallback(() => {
+    setFilters((previous) => ({ ...previous, dateFrom: undefined, dateTo: undefined, page: 1 }));
+  }, []);
+
   const handleToggleTag = useCallback((tagId: string) => {
     setFilters((previous) => {
       const currentTagIds = previous.tagIds ?? [];
@@ -238,11 +274,16 @@ export function LinksWorkspace({ initialFilters, initialLinks, initialTags }: Li
         search={filters.search ?? ""}
         sort={filters.sort}
         order={filters.order}
+        dateFrom={filters.dateFrom}
+        dateTo={filters.dateTo}
         isFetching={linksQuery.isFetching}
         onSearchChange={handleSearchChange}
         onClearSearch={handleClearSearch}
         onSortChange={handleSortChange}
         onOrderChange={handleOrderChange}
+        onDateFromChange={handleDateFromChange}
+        onDateToChange={handleDateToChange}
+        onResetDates={handleResetDates}
       />
 
       <TagBar

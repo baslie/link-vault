@@ -16,11 +16,16 @@ interface LinksSearchControlsProps {
   search: string;
   sort: LinkSortField;
   order: LinkSortOrder;
+  dateFrom?: string;
+  dateTo?: string;
   isFetching: boolean;
   onSearchChange: (value: string) => void;
   onClearSearch: () => void;
   onSortChange: (value: LinkSortField) => void;
   onOrderChange: (value: LinkSortOrder) => void;
+  onDateFromChange: (value: string | undefined) => void;
+  onDateToChange: (value: string | undefined) => void;
+  onResetDates: () => void;
 }
 
 function resolveOrderButtonLabel(sort: LinkSortField, order: LinkSortOrder): string {
@@ -35,19 +40,59 @@ function resolveOrderButtonHint(order: LinkSortOrder): string {
   return order === "asc" ? "По возрастанию" : "По убыванию";
 }
 
+function isoToDateInputValue(value?: string): string {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
+function dateInputValueToIso(value?: string): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const date = new Date(`${trimmed}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+
+  return date.toISOString();
+}
+
 export function LinksSearchControls({
   search,
   sort,
   order,
+  dateFrom,
+  dateTo,
   isFetching,
   onSearchChange,
   onClearSearch,
   onSortChange,
   onOrderChange,
+  onDateFromChange,
+  onDateToChange,
+  onResetDates,
 }: LinksSearchControlsProps) {
   const orderLabel = useMemo(() => resolveOrderButtonLabel(sort, order), [sort, order]);
   const orderHint = useMemo(() => resolveOrderButtonHint(order), [order]);
   const nextOrder = order === "asc" ? "desc" : "asc";
+
+  const dateFromValue = isoToDateInputValue(dateFrom);
+  const dateToValue = isoToDateInputValue(dateTo);
+  const hasDateFilters = Boolean(dateFromValue || dateToValue);
 
   return (
     <section className="space-y-4 rounded-xl border border-border bg-card/60 p-5 shadow-sm">
@@ -89,6 +134,34 @@ export function LinksSearchControls({
         </div>
       </div>
 
+      <div className="grid gap-3 md:grid-cols-[repeat(3,minmax(0,1fr))] md:items-end">
+        <div className="space-y-1">
+          <Label htmlFor="links-date-from">Дата добавления с</Label>
+          <Input
+            id="links-date-from"
+            type="date"
+            value={dateFromValue}
+            max={dateToValue || undefined}
+            onChange={(event) => onDateFromChange(dateInputValueToIso(event.target.value))}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="links-date-to">Дата добавления по</Label>
+          <Input
+            id="links-date-to"
+            type="date"
+            value={dateToValue}
+            min={dateFromValue || undefined}
+            onChange={(event) => onDateToChange(dateInputValueToIso(event.target.value))}
+          />
+        </div>
+        <div className="flex items-end gap-2">
+          <Button type="button" variant="ghost" onClick={onResetDates} disabled={!hasDateFilters}>
+            Сбросить даты
+          </Button>
+        </div>
+      </div>
+
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <div className="space-y-1">
@@ -126,3 +199,5 @@ export function LinksSearchControls({
     </section>
   );
 }
+
+export { dateInputValueToIso, isoToDateInputValue };
